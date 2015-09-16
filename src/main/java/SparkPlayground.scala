@@ -10,6 +10,8 @@ object SparkPlayground {
     val conf = new SparkConf().setMaster("local").setAppName("Sparky")
     val sc = new SparkContext(conf)
     val councillorsRDD = sc.parallelize(councillors)
-    // ...
+    // ... something to test, do your own stuff :-)
+    val numberOfMandates = councillorsRDD.flatMap(x => x.mandates).count()
+    println(numberOfMandates)
   }
 }
