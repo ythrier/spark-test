@@ -1,15 +1,14 @@
-import data.{Councillor, CouncillorDataReader}
+import data.{InputFile, Councillor, CouncillorDataReader}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 object SparkPlayground {
   val NR_INTERESTS = "src/main/resources/ra-nr-interessen.pdf"
-  val SR_INTERESTS = "src/main/resources/ra-nr-interessen.pdf"
+  val SR_INTERESTS = "src/main/resources/ra-sr-interessen.pdf"
 
   def main(args: Array[String]) {
-    val nrCouncillors = CouncillorDataReader.extractFrom(NR_INTERESTS, 7, 57)
-    val srCouncillors = CouncillorDataReader.extractFrom(SR_INTERESTS, 7, 22)
-    val councillors = nrCouncillors ::: srCouncillors
+    val dataFiles = List(new InputFile(NR_INTERESTS, 7, 57), new InputFile(SR_INTERESTS, 7, 22))
+    val councillors = CouncillorDataReader.extractFromFiles(dataFiles)
     val conf = new SparkConf().setMaster("local").setAppName("Sparky")
     val sc = new SparkContext(conf)
     val councillorsRDD = sc.parallelize(councillors)
@@ -22,18 +21,19 @@ object SparkPlayground {
     topOfGroupByMandates(councillorsRDD)
   }
 
-  def topOfGroupByMandates(councillorsRDD: RDD[Councillor]) = {
+  private def topOfGroupByMandates(councillorsRDD: RDD[Councillor]) = {
     val topX = 10
-    println("===Top " + topX + " of mandates with involvedc councillors===")
+    println("===Top " + topX + " of mandates with involved councillors===")
     val topOfGroupByMandates = councillorsRDD
-      .flatMap(councillor => councillor.mandates.map(mandate => (mandate.name, (councillor.name, councillor.party))))
-      .groupBy(councillorMandateTuple => councillorMandateTuple._1)
-      .sortBy(councillorMandateTuple => (-1) * councillorMandateTuple._2.size)
+      .flatMap(c => c.mandates.map(m => (c, m)))
+      .groupBy(cm => cm._2.name)
+      .map(g => g._2)
+      .sortBy(cm => (-1) * cm.size)
       .take(topX)
     topOfGroupByMandates.foreach(x => {
-      println(x._1, x._2.size)
-      x._2.foreach(y => println(y._2))
-      println()
+      println(x.head._2.name, x.size)
+      x.foreach(y => println(y._1.name, y._2.position))
+      println("--------------------------------------")
     })
     println("=============================================================")
   }

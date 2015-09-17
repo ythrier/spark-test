@@ -7,23 +7,38 @@ import technology.tabula.{HasText, RectangularTextContainer, Table}
 
 import scala.collection.JavaConversions._
 
+class InputFile(val path: String, val from: Int, val to: Int)
+
 object CouncillorDataReader {
   private val numberOfCouncillorInformationRows = 3
 
-  def extractFrom(file: String, from: Int, to: Int): List[Councillor] = {
-    val tables = PDFPageTables.extractFrom(file, from, to)
-    return extractFrom(tables)
-  }
-
-  private def extractFrom(tables: List[Table]): List[Councillor] = {
-    return tables.map(table => getRowsWithoutHeaderTable(table))
-      .flatMap(rows => splitIntoCouncillors(rows))
+  def extractFromFiles(files: List[InputFile]): List[Councillor] = {
+    var councillors = List[Councillor]()
+    files.foreach {
+      file => {
+        councillors :::= extractFromFile(file.path, file.from, file.to)
+      }
+    }
+    return councillors
       .groupBy(councillor => councillor.name)
-      .map(group => appendMandatesFromPageOverlaps(group._2))
+      .map(group => groupMandatesFromDuplicateCouncillors(group._2))
       .toList
   }
 
-  private def appendMandatesFromPageOverlaps(group: List[Councillor]): Councillor = {
+  def extractFromFile(file: String, from: Int, to: Int): List[Councillor] = {
+    val tables = PDFPageTables.extractFrom(file, from, to)
+    return extractFromTables(tables)
+  }
+
+  private def extractFromTables(tables: List[Table]): List[Councillor] = {
+    return tables.map(table => getRowsWithoutHeaderTable(table))
+      .flatMap(rows => splitIntoCouncillors(rows))
+      .groupBy(councillor => councillor.name)
+      .map(group => groupMandatesFromDuplicateCouncillors(group._2))
+      .toList
+  }
+
+  private def groupMandatesFromDuplicateCouncillors(group: List[Councillor]): Councillor = {
     val firstCouncillor = group.head
     group.tail.foreach(councillor => firstCouncillor.mandates :::= councillor.mandates)
     return firstCouncillor
