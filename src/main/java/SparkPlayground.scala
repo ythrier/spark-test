@@ -1,4 +1,4 @@
-import data.{InputFile, Councillor, CouncillorDataReader}
+import data.{Committee, InputFile, Councillor, CouncillorDataReader}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -19,6 +19,39 @@ object SparkPlayground {
     orderByNumberOfMandates(councillorsRDD)
     groupByMandates(councillorsRDD)
     topOfGroupByMandates(councillorsRDD)
+    numberOfVRMandatesComparedToNumberOfMandates(councillorsRDD)
+    groupByMandateCommittees(councillorsRDD)
+  }
+
+  private def groupByMandateCommittees(councillorsRDD: RDD[Councillor]) = {
+    println("===Mandate grouped by committees (sorted count)==============")
+    val groupByMandateCommittees = councillorsRDD
+      .flatMap(c => c.mandates)
+      .groupBy(m => m.committee)
+      .sortBy(g => (-1) * g._2.size)
+      .collect()
+    val numberOfMandates = councillorsRDD
+      .flatMap(c => c.mandates)
+      .count()
+    groupByMandateCommittees.foreach(x => {
+      println(x._1, " " + x._2.size, " " + (100.0 / numberOfMandates.toDouble * x._2.size.toDouble).toInt + "%")
+    })
+    println("=============================================================")
+  }
+
+  private def numberOfVRMandatesComparedToNumberOfMandates(councillorsRDD: RDD[Councillor]) = {
+    println("===Number of VR mandates vs. number of mandates==============")
+    val numberOfVRMandates = councillorsRDD
+      .flatMap(c => c.mandates)
+      .filter(m => m.committee.equals(Committee.administrationBoard))
+      .count()
+    val numberOfMandates = councillorsRDD
+      .flatMap(c => c.mandates)
+      .count()
+    println("Number of VR mandates: " + numberOfVRMandates +
+      "(" + (100.0 / numberOfMandates.toDouble * numberOfVRMandates.toDouble).toInt + "%)",
+      " Number of mandates: " + numberOfMandates)
+    println("=============================================================")
   }
 
   private def topOfGroupByMandates(councillorsRDD: RDD[Councillor]) = {

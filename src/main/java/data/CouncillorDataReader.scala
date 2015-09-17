@@ -78,8 +78,9 @@ object CouncillorDataReader {
   private def createMandate(rows: List[util.List[RectangularTextContainer[_ <: HasText]]], index: Int): Mandate = {
     val company = cellValueAt(rows, index, 0)
     val legalForm = cellValueAt(rows, index, 1)
-    val position = cellValueAt(rows, index, 2)
-    return new Mandate(company, legalForm, position)
+    val committee = cellValueAt(rows, index, 2).split("/")(0).trim
+    val position = cellValueAt(rows, index, 2).split("/")(1).trim
+    return new Mandate(company, legalForm, Committee.parse(committee).getCommitteeName(), position)
   }
 
   private def createCouncillor(rows: List[util.List[RectangularTextContainer[_ <: HasText]]], index: Int): Councillor = {
