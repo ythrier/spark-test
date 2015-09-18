@@ -1,9 +1,9 @@
 import java.io.{BufferedOutputStream, File, FileOutputStream}
-import java.net.URL
-import java.nio.charset.Charset
 
-import data.{Committee, InputFile, Councillor, CouncillorDataReader}
-import org.apache.commons.io.IOUtils
+import org.apache.spark.sql.{DataFrame, SQLContext}
+import sqlContext.implicits._
+
+import data.{Committee, Councillor, CouncillorDataReader, InputFile}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -39,10 +39,10 @@ object SparkPlayground {
 
   private def doSpark(councillorsRDD: RDD[Councillor]) = {
     orderByNumberOfMandates(councillorsRDD)
-    groupByMandates(councillorsRDD)
-    topOfGroupByMandates(councillorsRDD)
-    numberOfVRMandatesComparedToNumberOfMandates(councillorsRDD)
-    groupByMandateCommittees(councillorsRDD)
+    //    groupByMandates(councillorsRDD)
+    //    topOfGroupByMandates(councillorsRDD)
+    //    numberOfVRMandatesComparedToNumberOfMandates(councillorsRDD)
+    //    groupByMandateCommittees(councillorsRDD)
   }
 
   private def groupByMandateCommittees(councillorsRDD: RDD[Councillor]) = {
@@ -98,7 +98,7 @@ object SparkPlayground {
     val groupByMandates = councillorsRDD
       .flatMap(councillor => councillor.mandates.map(mandate => (mandate.name, councillor.name)))
       .groupBy(councillorMandateTuple => councillorMandateTuple._1)
-      .sortBy(councillorMandateTuple => (-1) * councillorMandateTuple._2.size)
+      .sortBy(councillorMandateTuple => (-1) * councillorMandateTuple._2.size).aggregate(0)()
       .collect()
     groupByMandates.foreach(x => println(x._1, x._2.size))
     println("=============================================================")
@@ -106,10 +106,22 @@ object SparkPlayground {
 
   private def orderByNumberOfMandates(councillorsRDD: RDD[Councillor]) = {
     println("===Councillors with number of mandates=======================")
+    orderByNumberOfMandatesSpark(councillorsRDD)
+    orderByNumberOfMandatesSql(councillorsRDD)
+    println("=============================================================")
+  }
+
+  private def orderByNumberOfMandatesSql(councillorsRDD: RDD[Councillor]) = {
+    val sparkContext = councillorsRDD.sparkContext
+    val sc = new SQLContext(sparkContext)
+    val df = sc.createDataFrame(councillorsRDD)
+
+  }
+
+  private def orderByNumberOfMandatesSpark(councillorsRDD: RDD[Councillor]): Unit = {
     val orderByNumberOfMandates = councillorsRDD
       .sortBy(x => (-1) * x.mandates.size)
       .collect()
     orderByNumberOfMandates.foreach(x => println(x.name, x.mandates.size))
-    println("=============================================================")
   }
 }
