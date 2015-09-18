@@ -1,4 +1,9 @@
+import java.io.{BufferedOutputStream, File, FileOutputStream}
+import java.net.URL
+import java.nio.charset.Charset
+
 import data.{Committee, InputFile, Councillor, CouncillorDataReader}
+import org.apache.commons.io.IOUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -9,10 +14,27 @@ object SparkPlayground {
   def main(args: Array[String]) {
     val dataFiles = List(new InputFile(NR_INTERESTS, 7, 57), new InputFile(SR_INTERESTS, 7, 22))
     val councillors = CouncillorDataReader.extractFromFiles(dataFiles)
+    exportCouncillors(councillors)
     val conf = new SparkConf().setMaster("local").setAppName("Sparky")
     val sc = new SparkContext(conf)
-    val councillorsRDD = sc.parallelize(councillors)
-    doSpark(councillorsRDD)
+    //    val councillorsRDD = sc.parallelize(councillors)
+    //    doSpark(councillorsRDD)
+  }
+
+  private def exportCouncillors(councillors: List[Councillor]): Unit = {
+    val bos = new BufferedOutputStream(new FileOutputStream(new File("target/data.txt")))
+    var id = 0
+    councillors.foreach(x => {
+      val councillorString = id + ";" + x.name + ";" + x.profession + ";" + x.party
+      x.mandates.foreach(y => {
+        val mandateString = id + ";" + y.name + ";" + y.legalForm + ";" + y.committee + ";" + y.position
+        val data = councillorString + ";" + mandateString + "\n"
+        bos.write(data.getBytes("UTF-8"))
+      })
+      id += 1
+    })
+    bos.flush()
+    bos.close()
   }
 
   private def doSpark(councillorsRDD: RDD[Councillor]) = {
